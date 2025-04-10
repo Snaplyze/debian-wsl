@@ -143,14 +143,17 @@ sudo chmod 440 /etc/sudoers.d/wsluser
 **Примечание**: На Windows установите последнюю версию драйвера для RTX 4090 с [официального сайта](https://www.nvidia.com/Download/index.aspx).
 
 ```bash
-# Добавление репозитория NVIDIA
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+# Добавление официального GPG-ключа NVIDIA
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+
+# Добавление стабильного репозитория NVIDIA (общий для всех deb-based дистрибутивов)
+curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+    sudo sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+    sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
 
 # Установка утилит и драйверов NVIDIA
 sudo apt update
-sudo apt install -y nvidia-cuda-toolkit nvidia-cuda-dev nvidia-utils libnvidia-compute-550 libnvidia-gl-550
+sudo apt install -y nvidia-container-toolkit nvidia-cuda-toolkit cuda-toolkit-12-3
 ```
   
 #### **5.2 Настройка графики (WSLg)**  
@@ -226,7 +229,7 @@ chmod -R 755 ~/.oh-my-zsh/custom/plugins
 # Установка необходимых пакетов
 sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
 
-# Добавление официального GPG-ключа Docker
+# Добавление официального GPG-ключа Docker (современный метод)
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 
 # Добавление репозитория Docker
@@ -235,9 +238,6 @@ echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] 
 # Установка Docker
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-
-# Установка NVIDIA Container Toolkit
-sudo apt install -y nvidia-container-toolkit
 
 # Настройка Docker для работы с NVIDIA GPU
 sudo mkdir -p /etc/docker
@@ -273,7 +273,7 @@ nvidia-smi
 nvcc --version
 
 # Проверка Docker с NVIDIA GPU
-sudo docker run --rm --gpus all nvidia/cuda:11.8.0-base-ubuntu22.04 nvidia-smi
+sudo docker run --rm --gpus all nvidia/cuda:12.3.0-base-ubuntu22.04 nvidia-smi
 ```
 
 #### **7.2 Локализация и время**  
@@ -368,7 +368,7 @@ echo 'export LC_ALL=ru_RU.UTF-8' >> ~/.zshrc
 
 ### **❗ Важные примечания**  
 1. **Драйверы NVIDIA**:  
-   - Устанавливаются **только в Windows** (версия ≥551.23 для RTX 4090).  
+   - Устанавливаются **только в Windows** (версия ≥570.00 для RTX 4090).  
    - В Debian пакеты CUDA и NVIDIA нужны только для утилит и библиотек.  
 
 2. **Группы пользователя**:  
