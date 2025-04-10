@@ -32,7 +32,12 @@
 3. После установки нажмите "Запустить" и дождитесь завершения первоначальной настройки
 4. Создайте пользователя и пароль при первом запуске
 
-#### **2.1 Вариант 2: Ручная установка**  
+**Примечание**: Также можно установить через командную строку:
+```powershell
+wsl --install debian
+```
+
+#### **2.2 Вариант 2: Ручная установка с выбором расположения**  
 ```powershell
 # Скачайте последнюю версию Debian для WSL
 curl.exe -L -o debian-wsl.appx https://aka.ms/wsl-debian-gnulinux
@@ -41,16 +46,59 @@ curl.exe -L -o debian-wsl.appx https://aka.ms/wsl-debian-gnulinux
 Rename-Item .\debian-wsl.appx .\debian-wsl.zip
 Expand-Archive .\debian-wsl.zip .\debian-wsl
 
-# Импортируйте дистрибутив
+# Импортируйте дистрибутив в выбранную папку
 wsl --import Debian C:\WSL\Debian .\debian-wsl\install.tar.gz --version 2
 ```
 
-#### **2.2 Запуск Debian WSL**  
-```powershell
-# Запуск Debian (если установлен через Microsoft Store)
-wsl -d Debian
+#### **2.3 Изменение местоположения уже установленного дистрибутива**
+Если вы уже установили Debian с помощью `wsl --install debian` и хотите изменить расположение:
 
-# Или если установлен вручную
+```powershell
+# Остановите дистрибутив
+wsl --terminate Debian
+
+# Экспортируйте его в tar-файл
+wsl --export Debian C:\temp\debian-backup.tar
+
+# Удалите исходный дистрибутив
+wsl --unregister Debian
+
+# Импортируйте его в новое местоположение
+wsl --import Debian C:\WSL\Debian C:\temp\debian-backup.tar --version 2
+
+# Можно удалить временный tar-файл
+Remove-Item C:\temp\debian-backup.tar
+```
+
+#### **2.4 Глобальная настройка расположения дисков WSL**
+Вы можете настроить расположение всех будущих дистрибутивов, создав или отредактировав файл `.wslconfig`:
+
+```powershell
+# Создание каталога для хранения виртуальных дисков WSL
+mkdir C:\WSL\VHDs
+
+# Создание/редактирование .wslconfig
+notepad "$env:USERPROFILE\.wslconfig"
+```
+
+Добавьте в файл следующие строки:
+```ini
+[wsl2]
+memory=16GB
+processors=8
+localhostForwarding=true
+kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
+vmIdleTimeout=60
+guiApplications=true
+# Путь к хранению виртуальных дисков
+diskPath=C:\\WSL\\VHDs
+```
+
+**Примечание**: Эта настройка повлияет только на новые установки, а не на существующие дистрибутивы.
+
+#### **2.5 Запуск Debian WSL**  
+```powershell
+# Запуск Debian
 wsl -d Debian
 ```
 
