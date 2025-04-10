@@ -38,17 +38,29 @@ wsl --install debian
 ```
 
 #### **2.2 Вариант 2: Ручная установка с выбором расположения**  
+Поскольку структура установочных файлов может меняться, наиболее надежный способ - использовать стандартный механизм установки с последующим перемещением:
+
 ```powershell
-# Скачайте последнюю версию Debian для WSL
-curl.exe -L -o debian-wsl.appx https://aka.ms/wsl-debian-gnulinux
+# Шаг 1: Установка Debian из Microsoft Store без запуска
+wsl --install debian --no-launch
 
-# Распакуйте appx файл (можно сделать переименовав расширение в .zip и распаковав)
-Rename-Item .\debian-wsl.appx .\debian-wsl.zip
-Expand-Archive .\debian-wsl.zip .\debian-wsl
+# Шаг 2: Создание папки для хранения дистрибутива
+mkdir -p C:\WSL\Debian
 
-# Импортируйте дистрибутив в выбранную папку
-wsl --import Debian C:\WSL\Debian .\debian-wsl\install.tar.gz --version 2
+# Шаг 3: Экспорт установленного образа в tar-файл
+wsl --export Debian C:\WSL\debian-backup.tar
+
+# Шаг 4: Удаление исходного дистрибутива
+wsl --unregister Debian
+
+# Шаг 5: Импорт в выбранное местоположение
+wsl --import Debian C:\WSL\Debian C:\WSL\debian-backup.tar --version 2
+
+# Шаг 6: Удаление временного tar-файла
+Remove-Item C:\WSL\debian-backup.tar
 ```
+
+Этот метод гарантированно работает независимо от изменений в структуре установочных файлов.
 
 #### **2.3 Изменение местоположения уже установленного дистрибутива**
 Если вы уже установили Debian с помощью `wsl --install debian` и хотите изменить расположение:
