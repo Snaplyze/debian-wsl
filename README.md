@@ -186,86 +186,17 @@ sudo apt install -y \
     pkg-config
 ```
 
-#### **6.2 Fish Shell с популярными плагинами**  
+#### **6.2 ZSH + Oh My ZSH с популярными плагинами**  
 
-**Популярные плагины и настройки для Fish:**
-1. **Fisher** - менеджер плагинов для Fish
-2. **fish_prompt** - улучшенное приглашение командной строки
-3. **z** - умная навигация по часто используемым директориям
-4. **fzf** - нечеткий поиск файлов и команд
-5. **fish-nvm** - управление версиями Node.js
-6. **done** - уведомления о завершении длительных команд
-7. **bass** - запуск bash-скриптов и функций в Fish
-8. **autopair** - автоматическое закрытие скобок и кавычек
-9. **colored-man-pages** - подсветка страниц man
-10. **fish_logo** - приветственный логотип при запуске
-
-```bash
-# Базовая настройка Fish
-mkdir -p ~/.config/fish
-
-# Создание файла конфигурации
-tee ~/.config/fish/config.fish > /dev/null << EOL
-# Установка русской локали
-set -x LANG ru_RU.UTF-8
-set -x LC_ALL ru_RU.UTF-8
-
-# Алиасы
-alias ll='ls -la'
-alias la='ls -A'
-alias l='ls'
-alias cls='clear'
-alias ..='cd ..'
-alias ...='cd ../..'
-
-# Настройка истории
-set -g fish_history_save_tokens 1
-set -g fish_history save
-set -g histfile ~/.fish_history
-
-# Цветной вывод 
-set -g fish_color_autosuggestion 555 brblack
-set -g fish_color_command 005fd7
-set -g fish_color_param 00afff
-set -g fish_color_error ff0000
-set -g fish_color_quote 999900
-EOL
-
-# Установка Fisher - менеджера плагинов
-curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
-fisher install jorgebucaran/fisher
-
-# Установка популярных плагинов
-fisher install jethrokuan/z
-fisher install PatrickF1/fzf.fish
-fisher install jorgebucaran/autopair.fish
-fisher install franciscolourenco/done
-fisher install edc/bass
-fisher install oh-my-fish/theme-bobthefish
-
-# Установка Starship для красивого промпта (кросс-платформенная альтернатива)
-curl -sS https://starship.rs/install.sh | sh -s -- -y
-echo 'starship init fish | source' >> ~/.config/fish/config.fish
-
-# Настройка автозавершения 
-mkdir -p ~/.config/fish/completions
-curl -sL https://raw.githubusercontent.com/docker/cli/master/contrib/completion/fish/docker.fish -o ~/.config/fish/completions/docker.fish
-curl -sL https://raw.githubusercontent.com/docker/compose/master/contrib/completion/fish/docker-compose.fish -o ~/.config/fish/completions/docker-compose.fish
-
-# Настройка приветствия
-tee ~/.config/fish/functions/fish_greeting.fish > /dev/null << EOL
-function fish_greeting
-    echo "🐧 WSL Debian - $(date '+%Y-%m-%d %H:%M')"
-    echo "🐟 Welcome to Fish shell!"
-end
-EOL
-```
-
-**Примечание:**
-- Fish имеет автодополнение и подсветку синтаксиса из коробки, не требующие дополнительной настройки
-- Fisher - это менеджер плагинов для Fish, похожий на Oh My ZSH для ZSH
-- Плагин bobthefish - это популярная тема, которая делает промпт более функциональным
-- Starship - это универсальный промпт, работающий со всеми оболочкамиректорий и в истории
+**Популярные плагины для ZSH:**
+1. **zsh-autosuggestions** - предлагает автодополнения на основе истории команд
+2. **zsh-syntax-highlighting** - подсветка синтаксиса команд в реальном времени
+3. **git** - множество алиасов и функций для работы с Git
+4. **docker** - алиасы и автодополнение для Docker
+5. **sudo** - добавляет sudo к предыдущей команде при двойном нажатии Esc
+6. **z** - умная навигация (быстрые переходы в часто используемые директории)
+7. **extract** - универсальная распаковка архивов через команду "x filename"
+8. **fzf** - нечеткий поиск файлов, директорий и в истории
 9. **history** - улучшенная работа с историей команд
 10. **dirhistory** - навигация по истории директорий (Alt+Left/Right/Up/Down)
 11. **colored-man-pages** - цветные man-страницы
@@ -354,7 +285,7 @@ locale
 timedatectl | grep "Time zone"
 ```
 
-#### **7.3 ZSH и Docker**  
+#### **7.3 Fish и Docker**  
 ```bash
 # Перезапуск WSL для применения всех настроек
 # В PowerShell на Windows:
@@ -366,6 +297,9 @@ echo $SHELL
 
 # Проверка Docker
 docker ps
+
+# Проверка автозавершения Fish
+fish -c "type docker"
 ```
 
 ---
@@ -387,12 +321,13 @@ sudo apt autoremove -y
 
 ### **9. Устранение типичных проблем**  
 ```bash
-# Исправление проблем с автозаполнением в ZSH
-compaudit | xargs chmod g-w,o-w
+# Исправление проблем с правами доступа
+mkdir -p ~/.config/fish/functions
+chmod -R 755 ~/.config/fish/functions
+chmod -R 755 ~/.config/fish/completions
 
-# Обновление индекса автозаполнения
-rm -rf ~/.zcompdump*
-compinit
+# Обновление индекса завершений
+fish -c "fish_update_completions"
 
 # Если powerline-шрифты отображаются некорректно
 mkdir -p ~/.local/share/fonts
@@ -406,9 +341,9 @@ curl -fLo ~/.local/share/fonts/MesloLGS-NF-Regular.ttf https://github.com/romkat
 # Проверка доступных локалей
 locale -a | grep ru
 
-# Дополнительные настройки в ~/.zshrc
-echo 'export LANG=ru_RU.UTF-8' >> ~/.zshrc
-echo 'export LC_ALL=ru_RU.UTF-8' >> ~/.zshrc
+# Дополнительные настройки в fish
+echo 'set -x LANG ru_RU.UTF-8' >> ~/.config/fish/config.fish
+echo 'set -x LC_ALL ru_RU.UTF-8' >> ~/.config/fish/config.fish
 ```
 
 #### **9.2 Проблемы с Windows Terminal**  
