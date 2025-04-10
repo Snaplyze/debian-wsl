@@ -186,43 +186,85 @@ sudo apt install -y \
     pkg-config
 ```
 
-#### **6.2 ZSH + Oh My ZSH с популярными плагинами**  
+#### **6.2 Fish Shell с популярными плагинами (для версии 4.0.0+)**  
 
-**Популярные плагины для ZSH:**
-1. **zsh-autosuggestions** - предлагает автодополнения на основе истории команд
-2. **zsh-syntax-highlighting** - подсветка синтаксиса команд в реальном времени
-3. **git** - множество алиасов и функций для работы с Git
-4. **docker** - алиасы и автодополнение для Docker
-5. **sudo** - добавляет sudo к предыдущей команде при двойном нажатии Esc
-6. **z** - умная навигация (быстрые переходы в часто используемые директории)
-7. **extract** - универсальная распаковка архивов через команду "x filename"
-8. **fzf** - нечеткий поиск файлов, директорий и в истории
-9. **history** - улучшенная работа с историей команд
-10. **dirhistory** - навигация по истории директорий (Alt+Left/Right/Up/Down)
-11. **colored-man-pages** - цветные man-страницы
-12. **command-not-found** - предлагает установить пакет, если команда не найдена
+**Популярные плагины и утилиты для Fish:**
+1. **Fisher** - менеджер плагинов для Fish
+2. **z** - умная навигация по часто используемым директориям
+3. **fzf** - нечеткий поиск файлов и команд
+4. **fish-nvm** - управление версиями Node.js
+5. **done** - уведомления о завершении длительных команд
+6. **bass** - запуск bash-скриптов и функций в Fish
+7. **autopair** - автоматическое закрытие скобок и кавычек
 
 ```bash
-# Установка Oh My ZSH для вашего пользователя (от имени wsluser)
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+# Установка дополнительных инструментов
+sudo apt install -y fzf fd-find bat
+
+# Базовая настройка Fish
+mkdir -p ~/.config/fish
+
+# Создание файла конфигурации
+tee ~/.config/fish/config.fish > /dev/null << EOL
+# Установка русской локали
+set -gx LANG ru_RU.UTF-8
+set -gx LC_ALL ru_RU.UTF-8
+
+# Алиасы
+alias ll='ls -la'
+alias la='ls -A'
+alias l='ls'
+alias cls='clear'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Улучшенные утилиты
+alias cat='batcat --paging=never'
+alias find='fd'
+
+# Настройка для Fish 4.0.0+
+set -U fish_greeting # Отключение приветствия
+set fish_key_bindings fish_default_key_bindings
+set fish_autosuggestion_enabled 1
+
+# Интеграция с FZF
+set -gx FZF_DEFAULT_COMMAND 'fd --type f --strip-cwd-prefix'
+set -gx FZF_CTRL_T_COMMAND \$FZF_DEFAULT_COMMAND
+EOL
+
+# Установка Fisher - менеджера плагинов (совместим с Fish 4.0.0)
+curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source
+fisher install jorgebucaran/fisher
 
 # Установка популярных плагинов
-git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-completions
+fisher install jethrokuan/z
+fisher install PatrickF1/fzf.fish
+fisher install jorgebucaran/autopair.fish
+fisher install franciscolourenco/done
+fisher install edc/bass
 
-# Настройка плагинов в конфигурационном файле
-sed -i 's/plugins=(git)/plugins=(git docker zsh-autosuggestions zsh-syntax-highlighting zsh-completions sudo extract z dirhistory colored-man-pages command-not-found)/g' ~/.zshrc
+# Установка Starship для красивого промпта (кросс-платформенный, совместим с Fish 4.0.0)
+curl -sS https://starship.rs/install.sh | sh -s -- -y
+echo 'starship init fish | source' >> ~/.config/fish/config.fish
 
-# Настройка автозаполнения
-echo '# Улучшенное автозаполнение' >> ~/.zshrc
-echo 'autoload -Uz compinit' >> ~/.zshrc
-echo 'compinit' >> ~/.zshrc
-echo 'zstyle ":completion:*" menu select' >> ~/.zshrc
+# Настройка автозавершения 
+mkdir -p ~/.config/fish/completions
+curl -sL https://raw.githubusercontent.com/docker/cli/master/contrib/completion/fish/docker.fish -o ~/.config/fish/completions/docker.fish
+curl -sL https://raw.githubusercontent.com/docker/compose/master/contrib/completion/fish/docker-compose.fish -o ~/.config/fish/completions/docker-compose.fish
 
-# Установка правильных прав
-chmod -R 755 ~/.oh-my-zsh/custom/plugins
+# Минималистичное приветствие
+tee ~/.config/fish/functions/fish_greeting.fish > /dev/null << EOL
+function fish_greeting
+    echo "🐧 WSL Debian - $(date '+%Y-%m-%d %H:%M')"
+end
+EOL
 ```
+
+**Примечание:**
+- Fish 4.0.0+ имеет улучшенное автодополнение и подсветку синтаксиса
+- Все указанные плагины совместимы с Fish 4.0.0
+- Новая конфигурация использует современный синтаксис и переменные
+- Starship обеспечивает красивый и информативный промпт без необходимости в темах
 
 #### **6.3 Docker с поддержкой GPU**  
 ```bash
@@ -383,6 +425,38 @@ echo 'set -x LC_ALL ru_RU.UTF-8' >> ~/.config/fish/config.fish
 
 4. **Пакеты для разработки**:  
    - Для установки компиляторов и средств разработки используйте `build-essential` вместо отдельных пакетов.
+
+---
+
+### **10. Удаление WSL-дистрибутива**
+
+Если вам нужно полностью удалить дистрибутив Debian из WSL (например, для чистой установки):
+
+```powershell
+# В PowerShell с правами администратора
+
+# Остановка работающего дистрибутива
+wsl --terminate Debian
+
+# Удаление дистрибутива
+wsl --unregister Debian
+
+# Проверка, что дистрибутив удален
+wsl --list
+```
+
+**Дополнительная очистка** (если вы вручную устанавливали дистрибутив):
+```powershell
+# Удаление папки дистрибутива (путь может отличаться)
+Remove-Item -Recurse -Force C:\WSL\Debian
+
+# Очистка временных файлов (если вы скачивали .appx)
+Remove-Item .\debian-wsl.appx
+Remove-Item .\debian-wsl.zip
+Remove-Item -Recurse -Force .\debian-wsl
+```
+
+После удаления вы можете заново установить дистрибутив, следуя инструкциям из раздела 2.
 
 ---
 
