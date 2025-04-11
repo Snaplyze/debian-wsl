@@ -370,19 +370,22 @@ echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] 
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Настройка Docker для работы с NVIDIA GPU
+# Создание директории для конфигурации Docker
 sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json > /dev/null << EOL
-{
-  "runtimes": {
-    "nvidia": {
-      "path": "nvidia-container-runtime",
-      "runtimeArgs": []
-    }
-  },
-  "default-runtime": "nvidia"
-}
-EOL
+
+# Создание конфигурационного файла для NVIDIA GPU
+sudo bash -c 'echo "{" > /etc/docker/daemon.json'
+sudo bash -c 'echo "  \"runtimes\": {" >> /etc/docker/daemon.json'
+sudo bash -c 'echo "    \"nvidia\": {" >> /etc/docker/daemon.json'
+sudo bash -c 'echo "      \"path\": \"nvidia-container-runtime\"," >> /etc/docker/daemon.json'
+sudo bash -c 'echo "      \"runtimeArgs\": []" >> /etc/docker/daemon.json'
+sudo bash -c 'echo "    }" >> /etc/docker/daemon.json'
+sudo bash -c 'echo "  }," >> /etc/docker/daemon.json'
+sudo bash -c 'echo "  \"default-runtime\": \"nvidia\"" >> /etc/docker/daemon.json'
+sudo bash -c 'echo "}" >> /etc/docker/daemon.json'
+
+# Проверка созданного файла
+sudo cat /etc/docker/daemon.json
 
 # Добавление пользователя в группу docker
 sudo usermod -aG docker wsluser
