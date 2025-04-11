@@ -224,7 +224,6 @@ memory=16GB
 sudo apt install -y \
     nano \
     python3 \
-    python3-pip \
     htop \
     curl \
     wget \
@@ -232,6 +231,9 @@ sudo apt install -y \
     git \
     build-essential \
     pkg-config
+
+# Дополнительные пакеты для разработки (опционально)
+# sudo apt install -y python3-pip python3-venv
 ```
 
 #### **6.2 Fish Shell с популярными плагинами (для версии 4.0.0+)**  
