@@ -154,7 +154,11 @@ echo "# Скопируйте этот файл в %USERPROFILE%\.wslconfig на 
 echo "# Пример: copy ~/wslconfig.txt /mnt/c/Users/username/.wslconfig" >> ~/wslconfig.txt
 ```
 
-**Примечание**: После изменения файла `/etc/wsl.conf` необходимо перезапустить WSL командой `wsl --shutdown` и запустить его снова.
+**Примечание**: 
+- После изменения файла `/etc/wsl.conf` необходимо перезапустить WSL командой `wsl --shutdown` и запустить его снова.
+- Секция `[interop]` управляет взаимодействием между Windows и Linux:
+  - `enabled=true`: Позволяет запускать Windows-программы из Linux (например, `notepad.exe`)
+  - `appendWindowsPath=true`: Добавляет пути Windows в переменную $PATH Linux, что позволяет вызывать Windows-программы без указания полного пути
 
 ---
 
@@ -252,92 +256,79 @@ sudo apt install -y \
 # Установка дополнительных инструментов
 sudo apt install -y fzf fd-find bat
 
-# Базовая настройка Fish для пользователя
-mkdir -p ~/.config/fish
-
-# Создание файла конфигурации для пользователя
-tee ~/.config/fish/config.fish > /dev/null << EOL
-# Установка русской локали
-set -gx LANG ru_RU.UTF-8
-set -gx LC_ALL ru_RU.UTF-8
-
-# Алиасы
-alias ll='ls -la'
-alias la='ls -A'
-alias l='ls'
-alias cls='clear'
-alias ..='cd ..'
-alias ...='cd ../..'
-
-# Улучшенные утилиты (если установлены)
-type -q batcat && alias cat='batcat --paging=never'
-type -q fd && alias find='fd'
-
-# Настройка для Fish 4.0.0+
-set -U fish_greeting # Отключение приветствия
-set fish_key_bindings fish_default_key_bindings
-set fish_autosuggestion_enabled 1
-
-# Интеграция с FZF
-set -gx FZF_DEFAULT_COMMAND 'fd --type f --strip-cwd-prefix 2>/dev/null || find . -type f'
-set -gx FZF_CTRL_T_COMMAND \$FZF_DEFAULT_COMMAND
-EOL
-
-# Настройка минималистичного приветствия
+# Создание директорий для конфигурации
 mkdir -p ~/.config/fish/functions
-tee ~/.config/fish/functions/fish_greeting.fish > /dev/null << EOL
-function fish_greeting
-    echo "🐧 WSL Debian - $(date '+%Y-%m-%d %H:%M')"
-end
-EOL
-
-# Базовая настройка Fish для root пользователя
-sudo mkdir -p /root/.config/fish
-
-# Создание файла конфигурации для root
-sudo tee /root/.config/fish/config.fish > /dev/null << EOL
-# Установка русской локали
-set -gx LANG ru_RU.UTF-8
-set -gx LC_ALL ru_RU.UTF-8
-
-# Алиасы для root
-alias ll='ls -la'
-alias la='ls -A'
-alias l='ls'
-alias cls='clear'
-
-# Отключение приветствия
-set -U fish_greeting
-EOL
-
-# Настройка автозавершения для Docker
 mkdir -p ~/.config/fish/completions
+
+# Настройка fish для пользователя - добавляем в конец существующего файла
+echo '# Настройки WSL Debian' >> ~/.config/fish/config.fish
+echo 'set -gx LANG ru_RU.UTF-8' >> ~/.config/fish/config.fish
+echo 'set -gx LC_ALL ru_RU.UTF-8' >> ~/.config/fish/config.fish
+echo '' >> ~/.config/fish/config.fish
+echo '# Алиасы' >> ~/.config/fish/config.fish
+echo "alias ll='ls -la'" >> ~/.config/fish/config.fish
+echo "alias la='ls -A'" >> ~/.config/fish/config.fish
+echo "alias l='ls'" >> ~/.config/fish/config.fish
+echo "alias cls='clear'" >> ~/.config/fish/config.fish
+echo "alias ..='cd ..'" >> ~/.config/fish/config.fish
+echo "alias ...='cd ../..'" >> ~/.config/fish/config.fish
+echo '' >> ~/.config/fish/config.fish
+echo '# Улучшенные утилиты' >> ~/.config/fish/config.fish
+echo "type -q batcat && alias cat='batcat --paging=never'" >> ~/.config/fish/config.fish
+echo "type -q fd && alias find='fd'" >> ~/.config/fish/config.fish
+echo '' >> ~/.config/fish/config.fish
+echo '# Настройка fish' >> ~/.config/fish/config.fish
+echo 'set -U fish_greeting' >> ~/.config/fish/config.fish
+echo 'set fish_key_bindings fish_default_key_bindings' >> ~/.config/fish/config.fish
+echo 'set fish_autosuggestion_enabled 1' >> ~/.config/fish/config.fish
+echo '' >> ~/.config/fish/config.fish
+echo '# FZF интеграция' >> ~/.config/fish/config.fish
+echo "set -gx FZF_DEFAULT_COMMAND 'fd --type f --strip-cwd-prefix 2>/dev/null || find . -type f'" >> ~/.config/fish/config.fish
+echo 'set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND' >> ~/.config/fish/config.fish
+
+# Создание приветственного сообщения
+echo 'function fish_greeting' > ~/.config/fish/functions/fish_greeting.fish
+echo '    echo "🐧 WSL Debian - $(date '\''+%Y-%m-%d %H:%M'\'')"' >> ~/.config/fish/functions/fish_greeting.fish
+echo 'end' >> ~/.config/fish/functions/fish_greeting.fish
+
+# Настройка завершений для Docker
 curl -sL https://raw.githubusercontent.com/docker/cli/master/contrib/completion/fish/docker.fish -o ~/.config/fish/completions/docker.fish
 curl -sL https://raw.githubusercontent.com/docker/compose/master/contrib/completion/fish/docker-compose.fish -o ~/.config/fish/completions/docker-compose.fish
 
-# Установка Fisher (менеджер плагинов)
-curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher
+# Установка Fisher и плагинов
+fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
+fish -c "fisher install jethrokuan/z"
+fish -c "fisher install PatrickF1/fzf.fish"
+fish -c "fisher install jorgebucaran/autopair.fish"
+fish -c "fisher install franciscolourenco/done"
+fish -c "fisher install edc/bass"
 
-# Установка плагинов
-fisher install jethrokuan/z
-fisher install PatrickF1/fzf.fish
-fisher install jorgebucaran/autopair.fish
-fisher install franciscolourenco/done
-fisher install edc/bass
-
-# Установка Starship для красивого промпта
+# Установка Starship и добавление в конфигурацию
 curl -sS https://starship.rs/install.sh | sh -s -- -y
 echo 'starship init fish | source' >> ~/.config/fish/config.fish
 
-# Настройка Starship для root
-sudo echo 'starship init fish | source' >> /root/.config/fish/config.fish
+# Настройка Fish для root
+sudo mkdir -p /root/.config/fish
+sudo bash -c 'echo "# Настройки WSL Debian" > /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx LANG ru_RU.UTF-8" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx LC_ALL ru_RU.UTF-8" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# Алиасы" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias ll='\''ls -la'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias la='\''ls -A'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias l='\''ls'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias cls='\''clear'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# Отключение приветствия" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -U fish_greeting" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "starship init fish | source" >> /root/.config/fish/config.fish'
 ```
 
 **Примечание:**
-- Fish 4.0.0+ имеет улучшенное автодополнение и подсветку синтаксиса из коробки
-- Если возникает ошибка при установке Fisher, перезапустите сессию (`exec fish`) и попробуйте снова
-- Starship обеспечивает красивый и информативный промпт
-- Все плагины тщательно отобраны для улучшения повседневного использования
+- Команды можно копировать блоками для удобного выполнения через терминал
+- Конфигурация добавляется в конец существующих файлов, не перезаписывая их
+- Для установки плагинов используется команда `fish -c`, чтобы запустить fish в отдельной сессии
 
 #### **6.3 Docker с поддержкой GPU**  
 ```bash
