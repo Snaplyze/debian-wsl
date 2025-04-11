@@ -309,6 +309,9 @@ echo 'starship init fish | source' >> ~/.config/fish/config.fish
 
 # Настройка Fish для root
 sudo mkdir -p /root/.config/fish
+sudo mkdir -p /root/.config/fish/functions
+
+# Основные настройки для root
 sudo bash -c 'echo "# Настройки WSL Debian" > /root/.config/fish/config.fish'
 sudo bash -c 'echo "set -gx LANG ru_RU.UTF-8" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "set -gx LC_ALL ru_RU.UTF-8" >> /root/.config/fish/config.fish'
@@ -318,11 +321,33 @@ sudo bash -c 'echo "alias ll='\''ls -la'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "alias la='\''ls -A'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "alias l='\''ls'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "alias cls='\''clear'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias ..='\''cd ..'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "alias ...='\''cd ../..'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
-sudo bash -c 'echo "# Отключение приветствия" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# Улучшенные утилиты" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "type -q batcat && alias cat='\''batcat --paging=never'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "type -q fd && alias find='\''fd'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# Настройка fish" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "set -U fish_greeting" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set fish_key_bindings fish_default_key_bindings" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set fish_autosuggestion_enabled 1" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# FZF интеграция" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_DEFAULT_COMMAND '\''fd --type f --strip-cwd-prefix 2>/dev/null || find . -type f'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_CTRL_T_COMMAND \$FZF_DEFAULT_COMMAND" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "starship init fish | source" >> /root/.config/fish/config.fish'
+
+# Приветствие для root
+sudo bash -c 'echo "function fish_greeting" > /root/.config/fish/functions/fish_greeting.fish'
+sudo bash -c 'echo "    echo \"🐧 WSL Debian [ROOT] - \$(date '\''+%Y-%m-%d %H:%M'\'')\""  >> /root/.config/fish/functions/fish_greeting.fish'
+sudo bash -c 'echo "end" >> /root/.config/fish/functions/fish_greeting.fish'
+
+# Копирование автозавершений Docker для root (опционально)
+sudo mkdir -p /root/.config/fish/completions
+sudo cp ~/.config/fish/completions/docker.fish /root/.config/fish/completions/ 2>/dev/null || true
+sudo cp ~/.config/fish/completions/docker-compose.fish /root/.config/fish/completions/ 2>/dev/null || true
 ```
 
 **Примечание:**
