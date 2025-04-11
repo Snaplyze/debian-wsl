@@ -163,6 +163,9 @@ echo "# Пример: copy ~/wslconfig.txt /mnt/c/Users/username/.wslconfig" >> 
 # Установка fish shell
 sudo apt install -y fish sudo
 
+# Установка fish shell по умолчанию для root
+sudo chsh -s /usr/bin/fish root
+
 # Создание пользователя wsluser
 sudo useradd -m -G sudo -s /usr/bin/fish wsluser
 
@@ -224,6 +227,8 @@ memory=16GB
 sudo apt install -y \
     nano \
     python3 \
+    python3-pip \
+    python3-venv \
     htop \
     curl \
     wget \
@@ -231,9 +236,6 @@ sudo apt install -y \
     git \
     build-essential \
     pkg-config
-
-# Дополнительные пакеты для разработки (опционально)
-# sudo apt install -y python3-pip python3-venv
 ```
 
 #### **6.2 Fish Shell с популярными плагинами (для версии 4.0.0+)**  
@@ -250,10 +252,10 @@ sudo apt install -y \
 # Установка дополнительных инструментов
 sudo apt install -y fzf fd-find bat
 
-# Базовая настройка Fish
+# Базовая настройка Fish для пользователя
 mkdir -p ~/.config/fish
 
-# Создание файла конфигурации
+# Создание файла конфигурации для пользователя
 tee ~/.config/fish/config.fish > /dev/null << EOL
 # Установка русской локали
 set -gx LANG ru_RU.UTF-8
@@ -289,6 +291,25 @@ function fish_greeting
 end
 EOL
 
+# Базовая настройка Fish для root пользователя
+sudo mkdir -p /root/.config/fish
+
+# Создание файла конфигурации для root
+sudo tee /root/.config/fish/config.fish > /dev/null << EOL
+# Установка русской локали
+set -gx LANG ru_RU.UTF-8
+set -gx LC_ALL ru_RU.UTF-8
+
+# Алиасы для root
+alias ll='ls -la'
+alias la='ls -A'
+alias l='ls'
+alias cls='clear'
+
+# Отключение приветствия
+set -U fish_greeting
+EOL
+
 # Настройка автозавершения для Docker
 mkdir -p ~/.config/fish/completions
 curl -sL https://raw.githubusercontent.com/docker/cli/master/contrib/completion/fish/docker.fish -o ~/.config/fish/completions/docker.fish
@@ -307,6 +328,9 @@ fisher install edc/bass
 # Установка Starship для красивого промпта
 curl -sS https://starship.rs/install.sh | sh -s -- -y
 echo 'starship init fish | source' >> ~/.config/fish/config.fish
+
+# Настройка Starship для root
+sudo echo 'starship init fish | source' >> /root/.config/fish/config.fish
 ```
 
 **Примечание:**
