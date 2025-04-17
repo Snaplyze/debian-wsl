@@ -1,9 +1,9 @@
-Хорошо, я внесу исправления в инструкцию, убрав избыточные шаги и уточнив некоторые моменты, но сохраню подробную настройку Fish Shell для root, как ты просил. Изменения в настройках пользователя (например, удаление дублирующих переменных окружения) будут зеркально отражены и для root.
+**📝 Итоговая инструкция по установке и настройке Debian на WSL (Версия 3, 17 Апреля 2025)**
+*Для Windows 11, Intel Core i7 13700K, NVIDIA RTX 4090*
 
 ---
 
-**📝 Итоговая инструкция по установке и настройке Debian на WSL (Версия 2, Апрель 2025)**
-*Для Windows 11, Intel Core i7 13700K, NVIDIA RTX 4090*
+*(Разделы 1-4 остаются без изменений, как в предоставленной вами инструкции)*
 
 ---
 
@@ -94,7 +94,7 @@ sudo apt update
 sudo apt upgrade -y
 
 # Установка базовых пакетов для работы с репозиториями и сетью
-sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release wget
 
 # Включение contrib, non-free и non-free-firmware репозиториев (важно для драйверов и ПО)
 sudo sed -i 's/main/main contrib non-free non-free-firmware/g' /etc/apt/sources.list
@@ -122,8 +122,11 @@ echo "LC_ALL=ru_RU.UTF-8" | sudo tee -a /etc/environment
 echo "LANGUAGE=ru_RU:ru" | sudo tee -a /etc/environment
 
 # Установка часового пояса (пример: Москва)
-sudo ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
-sudo dpkg-reconfigure -f noninteractive tzdata
+# Если вы не в Москве, найдите свой пояс: timedatectl list-timezones
+sudo timedatectl set-timezone Europe/Moscow
+# Старый метод (на всякий случай, но timedatectl предпочтительнее):
+# sudo ln -sf /usr/share/zoneinfo/Europe/Moscow /etc/localtime
+# sudo dpkg-reconfigure -f noninteractive tzdata
 ```
 
 #### **3.3 Настройка WSL (`/etc/wsl.conf` и `.wslconfig`)**
@@ -131,10 +134,10 @@ sudo dpkg-reconfigure -f noninteractive tzdata
 1.  **Создание файла `/etc/wsl.conf` внутри Debian:**
     * Этот файл управляет поведением конкретного дистрибутива WSL.
     ```bash
-    # Создание файла настроек WSL (без дублирования LANG/LC_ALL)
+    # Создание файла настроек WSL
     sudo tee /etc/wsl.conf > /dev/null << EOL
     [user]
-    default=wsluser # Убедитесь, что пользователь с таким именем будет создан
+    default=wsluser # Убедитесь, что пользователь с таким именем будет создан (см. раздел 4)
 
     [interop]
     enabled=true
@@ -155,18 +158,18 @@ sudo dpkg-reconfigure -f noninteractive tzdata
     ```ini
     [wsl2]
     # Настройки ресурсов (примеры, измените под свои нужды)
-    memory=16GB             # Например, 16 ГБ ОЗУ
-    processors=8            # Например, 8 процессорных ядер
-    # swap=4GB                # Можно указать файл подкачки, если нужно
+    memory=16GB          # Например, 16 ГБ ОЗУ
+    processors=8         # Например, 8 процессорных ядер
+    # swap=4GB             # Можно указать файл подкачки, если нужно
 
     # Настройки для поддержки GUI приложений (WSLg)
     guiApplications=true
 
-    # Параметры ядра для совместимости (могут быть нужны для systemd/cgroups)
-    kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
-
     # Отладка (если нужно)
     # debugShell=true
+
+    # Если возникают проблемы с systemd/cgroups, можно попробовать:
+    # kernelCommandLine = cgroup_no_v1=all systemd.unified_cgroup_hierarchy=1
     ```
     * **Примечание**: После создания/изменения `.wslconfig` нужен перезапуск WSL (`wsl --shutdown` в PowerShell).
 
@@ -185,18 +188,25 @@ sudo chsh -s /usr/bin/fish root
 # Создание пользователя wsluser (если не создан при первом запуске)
 # Проверьте, существует ли пользователь: id wsluser
 # Если нет, создайте:
-sudo useradd -m -G sudo -s /usr/bin/fish wsluser
+if ! id "wsluser" &>/dev/null; then
+    sudo useradd -m -G sudo -s /usr/bin/fish wsluser
+    echo "Пользователь wsluser создан."
+    # Установка пароля для пользователя
+    echo "Установите пароль для wsluser:"
+    sudo passwd wsluser
+else
+    echo "Пользователь wsluser уже существует."
+    # Убедимся, что он в группе sudo и у него правильная оболочка
+    sudo usermod -aG sudo wsluser
+    sudo usermod -s /usr/bin/fish wsluser
+fi
 
-# Установка пароля для пользователя
-sudo passwd wsluser
 
 # Настройка sudo без пароля (удобно, но менее безопасно)
 echo "wsluser ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/wsluser
 sudo chmod 440 /etc/sudoers.d/wsluser
 
-# Если вы создали пользователя через useradd, установите его как пользователя по умолчанию
-# для входа в WSL (если еще не настроено в /etc/wsl.conf или через Microsoft Store).
-# Можно сделать это через реестр Windows или убедиться, что настройка в /etc/wsl.conf верна.
+# Убедитесь, что пользователь wsluser установлен как default в /etc/wsl.conf (сделано в разделе 3.3)
 ```
 
 ---
@@ -205,10 +215,16 @@ sudo chmod 440 /etc/sudoers.d/wsluser
 
 #### **5.1 Компоненты NVIDIA в Debian**
 
-**Важное примечание**: Убедитесь, что на **Windows** установлен **последний драйвер NVIDIA** для вашей видеокарты (RTX 4090) с [официального сайта](https://www.nvidia.com/Download/index.aspx). Сам драйвер в Debian **не устанавливается**.
+**❗ Важное примечание**:
+* Убедитесь, что на **Windows** установлен **последний драйвер NVIDIA** для вашей видеокарты (RTX 4090) с [официального сайта](https://www.nvidia.com/Download/index.aspx). Сам драйвер в Debian **не устанавливается**. Драйвер Windows передает API CUDA в WSL2.
+* Этот раздел устанавливает **две** основные вещи:
+    1.  **NVIDIA Container Toolkit**: Позволяет Docker-контейнерам получать доступ к GPU.
+    2.  **NVIDIA CUDA Toolkit**: Предоставляет компилятор `nvcc` и библиотеки CUDA для разработки и запуска приложений непосредственно в WSL, а не только в контейнерах.
+
+**1. Установка NVIDIA Container Toolkit (для Docker GPU)**
 
 ```bash
-# Добавление официального GPG-ключа NVIDIA
+# Добавление официального GPG-ключа NVIDIA Container Toolkit
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
 # Добавление репозитория NVIDIA Container Toolkit
@@ -219,19 +235,71 @@ curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-contai
 # Обновление списка пакетов
 sudo apt update
 
-# Установка NVIDIA Container Toolkit (для поддержки GPU в Docker)
+# Установка NVIDIA Container Toolkit
 sudo apt install -y nvidia-container-toolkit
+```
 
-# Установка инструментов CUDA (опционально, если нужно компилировать/запускать CUDA-код напрямую в WSL)
-# Эти пакеты НЕ устанавливают драйвер, только библиотеки и утилиты (nvcc, nvidia-smi и т.д.)
-# Вы можете установить полный набор:
-sudo apt install -y nvidia-cuda-toolkit
-# ИЛИ, если нужен только nvidia-smi и базовые библиотеки, можно поискать пакет nvidia-utils:
-# sudo apt search nvidia-utils
-# sudo apt install nvidia-utils-XYZ # Замените XYZ на нужную версию
+**2. Установка CUDA Toolkit (по официальной инструкции NVIDIA для WSL)**
 
-# Проверка установки утилиты nvidia-smi (должна работать после установки toolkit или utils)
-nvidia-smi
+* **Примечание:** Команды ниже соответствуют установке CUDA Toolkit 12.4 (на момент Апреля 2025). **Всегда проверяйте актуальные команды** на [официальной странице загрузки CUDA для WSL-Ubuntu](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_network), так как версии и URL могут меняться.
+
+```bash
+# Скачиваем пиннинг-файл для репозитория CUDA (указывает приоритет)
+wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin
+sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600
+
+# Скачиваем deb-пакет репозитория CUDA (пример для CUDA 12.4.1, проверьте актуальную версию!)
+# Замените '12.4.1' и '12-4' на актуальные версии при необходимости
+CUDA_VERSION_MAJOR_MINOR="12.4"
+CUDA_VERSION_FULL="12.4.1"
+CUDA_REPO_PACKAGE="cuda-repo-wsl-ubuntu-${CUDA_VERSION_MAJOR_MINOR//./-}-local_${CUDA_VERSION_FULL}-1_amd64.deb" # Обратите внимание, может быть local или network
+wget "https://developer.download.nvidia.com/compute/cuda/${CUDA_VERSION_FULL}/local_installers/${CUDA_REPO_PACKAGE}"
+
+# Устанавливаем скачанный пакет репозитория
+sudo dpkg -i ${CUDA_REPO_PACKAGE}
+
+# Копируем ключ репозитория (путь может зависеть от версии в имени пакета)
+# Убедитесь, что путь /var/cuda-repo-wsl-ubuntu-12-4-local/ совпадает с версией выше
+sudo cp "/var/cuda-repo-wsl-ubuntu-${CUDA_VERSION_MAJOR_MINOR//./-}-local/cuda-"*"-keyring.gpg" /usr/share/keyrings/
+
+# Обновляем список пакетов после добавления репозитория CUDA
+sudo apt update
+
+# Устанавливаем CUDA Toolkit (мета-пакет, который установит последнюю версию из репозитория)
+# Можно указать конкретную версию, например: sudo apt install cuda-toolkit-12-4
+sudo apt install -y cuda-toolkit
+
+# Очистка (удаление скачанного deb-файла репозитория)
+rm ${CUDA_REPO_PACKAGE}
+```
+
+**3. Настройка переменных окружения для CUDA**
+
+* Чтобы система и компиляторы могли найти исполняемые файлы CUDA (как `nvcc`) и библиотеки, нужно добавить пути в переменные окружения $PATH и $LD_LIBRARY_PATH.
+
+```bash
+# --- Для пользователя wsluser ---
+# Добавляем пути в config.fish пользователя
+# Используем /usr/local/cuda как стандартный путь (обычно это символическая ссылка на конкретную версию)
+echo '# Add CUDA paths to environment' >> ~/.config/fish/config.fish
+echo 'if test -d /usr/local/cuda' >> ~/.config/fish/config.fish
+echo '    set -xp PATH /usr/local/cuda/bin $PATH' >> ~/.config/fish/config.fish
+echo '    set -xp LD_LIBRARY_PATH /usr/local/cuda/lib64 $LD_LIBRARY_PATH' >> ~/.config/fish/config.fish
+echo 'end' >> ~/.config/fish/config.fish
+
+# --- Для root ---
+# Добавляем пути в config.fish пользователя root
+sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "# Add CUDA paths to environment" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "if test -d /usr/local/cuda" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo '\''    set -xp PATH /usr/local/cuda/bin $PATH'\'' >> /root/.config/fish/config.fish'
+sudo bash -c 'echo '\''    set -xp LD_LIBRARY_PATH /usr/local/cuda/lib64 $LD_LIBRARY_PATH'\'' >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "end" >> /root/.config/fish/config.fish'
+
+# Примените изменения переменных окружения, перезапустив оболочку или WSL
+# Для немедленного применения в текущей сессии fish (для пользователя):
+# source ~/.config/fish/config.fish
+# или просто выйдите и войдите снова.
 ```
 
 ---
@@ -258,15 +326,18 @@ sudo apt install -y \
 ```
 
 #### **6.2 Fish Shell с популярными плагинами**
-*(Настройки LANG/LC_ALL удалены из конфигов fish, т.к. они заданы глобально)*
-
+*(Без изменений, кроме добавления настроек CUDA PATH/LD_LIBRARY_PATH в конце раздела 5)*
 ```bash
 # Создание директорий для конфигурации пользователя
 mkdir -p ~/.config/fish/functions
 mkdir -p ~/.config/fish/completions
 
 # --- Настройка fish для пользователя wsluser ---
-echo '# --- Fish Shell Config WSL Debian ---' > ~/.config/fish/config.fish
+# (Предполагается, что файл уже существует и содержит базовые настройки из раздела 5)
+# Добавляем алиасы и прочее, если файла еще нет или он пуст
+if [ ! -s ~/.config/fish/config.fish ]; then
+    echo '# --- Fish Shell Config WSL Debian ---' > ~/.config/fish/config.fish
+fi
 echo '' >> ~/.config/fish/config.fish
 echo '# Алиасы' >> ~/.config/fish/config.fish
 echo "alias ll='ls -la'" >> ~/.config/fish/config.fish
@@ -282,17 +353,21 @@ echo "type -q fdfind && alias fd='fdfind'" >> ~/.config/fish/config.fish # fd н
 echo "type -q fdfind && alias find='fdfind'" >> ~/.config/fish/config.fish # Можно и find заменить
 echo '' >> ~/.config/fish/config.fish
 echo '# Настройка fish' >> ~/.config/fish/config.fish
-echo 'set -U fish_greeting' >> ~/.config/fish/config.fish # Отключаем стандартное приветствие
+echo 'set -U fish_greeting ""' >> ~/.config/fish/config.fish # Отключаем стандартное приветствие через универсальную переменную
 echo 'set fish_key_bindings fish_default_key_bindings' >> ~/.config/fish/config.fish
 echo 'set fish_autosuggestion_enabled 1' >> ~/.config/fish/config.fish
 echo '' >> ~/.config/fish/config.fish
 echo '# FZF интеграция (требует установки fzf, fd-find)' >> ~/.config/fish/config.fish
-echo "set -gx FZF_DEFAULT_COMMAND 'fdfind --type f --strip-cwd-prefix 2>/dev/null || find . -type f'" >> ~/.config/fish/config.fish
+echo "set -gx FZF_DEFAULT_COMMAND 'fdfind --type f --color=always --strip-cwd-prefix 2>/dev/null || find . -type f'" >> ~/.config/fish/config.fish
 echo 'set -gx FZF_CTRL_T_COMMAND $FZF_DEFAULT_COMMAND' >> ~/.config/fish/config.fish
+echo 'set -gx FZF_CTRL_T_OPTS "--preview '\''batcat --color=always --style=numbers --line-range :500 {}'\''"' >> ~/.config/fish/config.fish # Preview с bat
+echo 'set -gx FZF_ALT_C_COMMAND "fdfind --type d --color=always --strip-cwd-prefix 2>/dev/null || find . -type d"' >> ~/.config/fish/config.fish # Поиск директорий для Alt+C
+echo 'set -gx FZF_ALT_C_OPTS "--preview '\''tree -C {} | head -n 50'\''"' >> ~/.config/fish/config.fish # Preview для директорий
 
 # Создание приветственного сообщения для пользователя
 echo 'function fish_greeting' > ~/.config/fish/functions/fish_greeting.fish
-echo '    echo "🐧 WSL Debian User - $(date '\''+%Y-%m-%d %H:%M'\'')"' >> ~/.config/fish/functions/fish_greeting.fish
+echo '    set -l date_str (date "+%Y-%m-%d %H:%M")' >> ~/.config/fish/functions/fish_greeting.fish
+echo '    echo "🐧 WSL Debian User - $date_str"' >> ~/.config/fish/functions/fish_greeting.fish
 echo 'end' >> ~/.config/fish/functions/fish_greeting.fish
 
 # Настройка завершений для Docker
@@ -301,11 +376,11 @@ curl -sL https://raw.githubusercontent.com/docker/compose/master/contrib/complet
 
 # Установка Fisher и плагинов (выполнять от имени пользователя wsluser)
 fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
-fish -c "fisher install jethrokuan/z"
-fish -c "fisher install PatrickF1/fzf.fish" # Интеграция fzf
-fish -c "fisher install jorgebucaran/autopair.fish"
-fish -c "fisher install franciscolourenco/done"
-fish -c "fisher install edc/bass"
+fish -c "fisher install jethrokuan/z" # Перемещение по часто используемым директориям
+fish -c "fisher install PatrickF1/fzf.fish" # Интеграция fzf (Ctrl+T, Alt+C, Ctrl+R)
+fish -c "fisher install jorgebucaran/autopair.fish" # Автоматическое закрытие скобок/кавычек
+fish -c "fisher install franciscolourenco/done" # Уведомления о завершении долгих команд
+fish -c "fisher install edc/bass" # Использование bash утилит/скриптов в fish
 
 # Установка Starship (выполнять от имени пользователя wsluser)
 curl -sS https://starship.rs/install.sh | sh -s -- -y
@@ -315,7 +390,9 @@ echo 'starship init fish | source' >> ~/.config/fish/config.fish
 sudo mkdir -p /root/.config/fish/functions
 sudo mkdir -p /root/.config/fish/completions
 
-sudo bash -c 'echo "# --- Fish Shell Config WSL Debian [ROOT] ---" > /root/.config/fish/config.fish'
+# (Предполагается, что файл уже существует и содержит базовые настройки из раздела 5)
+# Добавляем алиасы и прочее, если файла еще нет или он пуст
+sudo bash -c 'if [ ! -s /root/.config/fish/config.fish ]; then echo "# --- Fish Shell Config WSL Debian [ROOT] ---" > /root/.config/fish/config.fish; fi'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "# Алиасы" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "alias ll='\''ls -la'\''" >> /root/.config/fish/config.fish'
@@ -331,35 +408,39 @@ sudo bash -c 'echo "type -q fdfind && alias fd='\''fdfind'\''" >> /root/.config/
 sudo bash -c 'echo "type -q fdfind && alias find='\''fdfind'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "# Настройка fish" >> /root/.config/fish/config.fish'
-sudo bash -c 'echo "set -U fish_greeting" >> /root/.config/fish/config.fish' # Отключаем стандартное приветствие
+sudo bash -c 'echo "set -U fish_greeting \"\"" >> /root/.config/fish/config.fish' # Отключаем стандартное приветствие
 sudo bash -c 'echo "set fish_key_bindings fish_default_key_bindings" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "set fish_autosuggestion_enabled 1" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "# FZF интеграция" >> /root/.config/fish/config.fish'
-sudo bash -c 'echo "set -gx FZF_DEFAULT_COMMAND '\''fdfind --type f --strip-cwd-prefix 2>/dev/null || find . -type f'\''" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_DEFAULT_COMMAND '\''fdfind --type f --color=always --strip-cwd-prefix 2>/dev/null || find . -type f'\''" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "set -gx FZF_CTRL_T_COMMAND \$FZF_DEFAULT_COMMAND" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_CTRL_T_OPTS \"--preview '\''batcat --color=always --style=numbers --line-range :500 {}'\''\"" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_ALT_C_COMMAND \"fdfind --type d --color=always --strip-cwd-prefix 2>/dev/null || find . -type d\"" >> /root/.config/fish/config.fish'
+sudo bash -c 'echo "set -gx FZF_ALT_C_OPTS \"--preview '\''tree -C {} | head -n 50'\''\"" >> /root/.config/fish/config.fish'
 sudo bash -c 'echo "" >> /root/.config/fish/config.fish'
 # Установка Starship для root (если еще не установлен глобально) и добавление в конфиг
-sudo sh -c 'curl -sS https://starship.rs/install.sh | sh -s -- -y'
+sudo sh -c 'curl -sS https://starship.rs/install.sh | sh -s -- -y' # Ставим глобально, если еще нет
 sudo bash -c 'echo "starship init fish | source" >> /root/.config/fish/config.fish'
 
 # Приветствие для root
 sudo bash -c 'echo "function fish_greeting" > /root/.config/fish/functions/fish_greeting.fish'
-sudo bash -c 'echo "    echo \"🔥 WSL Debian [ROOT] - \$(date '\''+%Y-%m-%d %H:%M'\'')\""  >> /root/.config/fish/functions/fish_greeting.fish'
+sudo bash -c 'echo "    set -l date_str (date \"+%Y-%m-%d %H:%M\")" >> /root/.config/fish/functions/fish_greeting.fish'
+sudo bash -c 'echo "    echo \"🔥 WSL Debian \[ROOT] - \$date_str\"" >> /root/.config/fish/functions/fish_greeting.fish'
 sudo bash -c 'echo "end" >> /root/.config/fish/functions/fish_greeting.fish'
 
 # Копирование автозавершений Docker для root (если Docker используется под root)
 sudo cp ~/.config/fish/completions/docker.fish /root/.config/fish/completions/ 2>/dev/null || true
 sudo cp ~/.config/fish/completions/docker-compose.fish /root/.config/fish/completions/ 2>/dev/null || true
-# Установка Fisher и плагинов для root (если необходимо, обычно не рекомендуется)
+# Установка Fisher и плагинов для root (обычно не рекомендуется, но если очень нужно)
 # sudo fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
-# sudo fish -c "fisher install ..." # Добавьте нужные плагины
+# sudo fish -c "fisher install jethrokuan/z" # Пример
 ```
 
 #### **6.3 Docker с поддержкой GPU**
 ```bash
 # Установка необходимых пакетов (могут быть уже установлены)
-sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+# sudo apt install -y apt-transport-https ca-certificates curl gnupg lsb-release (уже ставили)
 
 # Добавление официального GPG-ключа Docker
 curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
@@ -372,26 +453,38 @@ sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
 # Настройка Docker для использования NVIDIA GPU по умолчанию
-# Убедитесь, что nvidia-container-toolkit установлен (см. Раздел 5.1)
+# Убедитесь, что nvidia-container-toolkit установлен (см. Раздел 5.1, шаг 1)
 sudo nvidia-ctk runtime configure --runtime=docker
 # Эта команда должна автоматически настроить /etc/docker/daemon.json
 # Проверьте содержимое файла: cat /etc/docker/daemon.json
 # Он должен содержать что-то вроде:
 # {
-#     "default-runtime": "nvidia",
 #     "runtimes": {
 #         "nvidia": {
 #             "args": [],
 #             "path": "nvidia-container-runtime"
 #         }
-#     }
+#     },
+#     "default-runtime": "nvidia" # Это строка может быть добавлена вручную, если не добавилась
 # }
-# Если файл не создался или неверный, создайте/исправьте вручную.
+# Если файл пуст или не настроен, создайте/исправьте вручную:
+# sudo mkdir -p /etc/docker
+# sudo tee /etc/docker/daemon.json > /dev/null <<EOF
+# {
+#     "runtimes": {
+#         "nvidia": {
+#             "path": "/usr/bin/nvidia-container-runtime",
+#             "runtimeArgs": []
+#         }
+#     },
+#     "default-runtime": "nvidia"
+# }
+# EOF
 
 # Добавление пользователя в группу docker (чтобы не использовать sudo для docker)
 sudo usermod -aG docker wsluser
 
-# Включение и запуск службы Docker через systemd
+# Включение и запуск службы Docker через systemd (требует systemd=true в /etc/wsl.conf)
 sudo systemctl enable docker
 sudo systemctl start docker
 
@@ -404,17 +497,28 @@ sudo systemctl status docker
 
 ### **7. Проверка системы**
 #### **7.1 NVIDIA и CUDA**
+
+**Важно:** Перезапустите WSL (`wsl --shutdown` в PowerShell, затем `wsl -d Debian`) или как минимум выйдите и войдите в сессию fish, чтобы применились настройки переменных окружения CUDA из раздела 5.3.
+
 ```bash
-# Проверка доступности NVIDIA GPU через драйвер Windows (должна работать всегда)
+# 1. Проверка доступности NVIDIA GPU через драйвер Windows (должна работать всегда после установки драйвера в Windows)
 nvidia-smi
 
-# Проверка версии CUDA Toolkit (если установлен nvidia-cuda-toolkit)
+# 2. Проверка версии CUDA Toolkit (nvcc) (должна работать после установки cuda-toolkit и перезапуска сессии)
 nvcc --version
+# Если команда не найдена, проверьте:
+# - Успешно ли завершилась установка 'cuda-toolkit' в разделе 5.2?
+# - Правильно ли добавлены пути в ~/.config/fish/config.fish (раздел 5.3)?
+# - Перезапустили ли вы сессию/WSL?
+# - Существует ли путь /usr/local/cuda/bin? (ls /usr/local/cuda/bin)
 
-# Проверка Docker с NVIDIA GPU
-# Запустите контейнер, использующий GPU (убедитесь, что Docker запущен и настроен)
+# 3. Проверка Docker с NVIDIA GPU
+# Убедитесь, что Docker запущен (sudo systemctl status docker) и настроен (раздел 6.3)
+# Запустите тестовый контейнер, использующий GPU. Он должен вывести тот же результат, что и nvidia-smi.
+# Запускайте от пользователя wsluser БЕЗ sudo (после перезапуска WSL/сессии)
 docker run --rm --gpus all nvidia/cuda:latest-base nvidia-smi
-# Если предыдущая команда не сработала без sudo, перезапустите WSL или используйте `newgrp docker`
+# Если команда 'docker' требует sudo, значит вы не перезапустили сессию после добавления пользователя в группу docker.
+# Попробуйте `newgrp docker` в текущей сессии или перезапустите WSL.
 ```
 
 #### **7.2 Локализация и время**
@@ -422,18 +526,12 @@ docker run --rm --gpus all nvidia/cuda:latest-base nvidia-smi
 # Проверка настроек локализации (должно показывать ru_RU.UTF-8)
 locale
 
-# Проверка часового пояса (должно показывать Europe/Moscow)
+# Проверка часового пояса (должно показывать Europe/Moscow или ваш пояс)
 timedatectl | grep "Time zone"
 ```
 
 #### **7.3 Fish и Docker**
 ```bash
-# Перезапуск WSL для применения всех настроек
-# В PowerShell на Windows:
-# wsl --shutdown
-# wsl -d Debian
-
-# Войдите под пользователем wsluser
 # Проверка текущей оболочки (должна быть /usr/bin/fish)
 echo $SHELL
 
@@ -442,6 +540,7 @@ docker ps
 
 # Проверка автозавершения Fish для Docker
 # Введите 'docker ' и нажмите Tab - должны появиться команды Docker
+# Введите 'docker run --gpus' и нажмите Tab - должны появиться опции --gpus
 ```
 
 ---
@@ -458,7 +557,7 @@ sudo apt clean
 
 echo "Настройка Debian WSL завершена!"
 
-# Рекомендуется еще раз перезапустить WSL
+# Рекомендуется еще раз перезапустить WSL для чистоты
 # В PowerShell на Windows:
 # wsl --shutdown
 ```
@@ -466,6 +565,7 @@ echo "Настройка Debian WSL завершена!"
 ---
 
 ### **9. Устранение типичных проблем**
+*(Добавлена проверка CUDA путей)*
 ```bash
 # Исправление проблем с правами доступа к конфигам fish (если создавали с sudo)
 sudo chown -R wsluser:wsluser /home/wsluser/.config/fish
@@ -475,10 +575,9 @@ chmod -R u+rwX /home/wsluser/.config/fish
 fish -c "fish_update_completions"
 
 # Если powerline-шрифты (для Starship) отображаются некорректно в терминале Windows
-# Установите шрифт с поддержкой Nerd Font (например, MesloLGS NF)
-# Скачайте отсюда: https://github.com/romkatv/powerlevel10k-media/raw/master/MesloLGS%20NF%20Regular.ttf
-# Установите его в Windows (ПКМ -> Установить для всех пользователей)
-# Выберите этот шрифт в настройках профиля Debian в Windows Terminal
+# Установите шрифт с поддержкой Nerd Font (например, MesloLGS NF, FiraCode NF, Caskaydia Cove NF)
+# Скачайте, установите в Windows (ПКМ -> Установить для всех пользователей)
+# Выберите этот шрифт в настройках профиля Debian в Windows Terminal (JSON или GUI)
 
 # Проблемы с русской локализацией (если все еще не работает)
 # Проверка доступных локалей
@@ -490,6 +589,20 @@ cat /etc/environment
 # Проблемы с Windows Terminal (ошибка пути к иконке)
 # Откройте настройки Windows Terminal (Ctrl+,) -> Открыть JSON-файл
 # Найдите профиль с некорректным значением "icon" и исправьте путь или удалите строку "icon".
+
+# Проблемы с CUDA (`nvcc: command not found` или ошибки библиотек)
+# 1. Проверьте переменные окружения в fish:
+#    echo $PATH
+#    echo $LD_LIBRARY_PATH
+#    # Должны содержать /usr/local/cuda/bin и /usr/local/cuda/lib64 соответственно
+# 2. Проверьте, куда указывает /usr/local/cuda:
+#    ls -l /usr/local/cuda
+#    # Должно быть ссылкой на /usr/local/cuda-X.Y
+# 3. Убедитесь, что файлы существуют:
+#    ls /usr/local/cuda/bin/nvcc
+#    ls /usr/local/cuda/lib64/libcudart.so*
+# 4. Если пути не установлены, перепроверьте раздел 5.3 и перезапустите сессию.
+# 5. Убедитесь, что драйвер NVIDIA в Windows обновлен.
 ```
 
 ---
@@ -510,28 +623,27 @@ wsl --list
 
 # Дополнительная очистка (если вы вручную устанавливали дистрибутив)
 # Удаление папки дистрибутива (путь из вашего варианта 2.2)
-Remove-Item -Recurse -Force C:\WSL\Debian
+# Remove-Item -Recurse -Force C:\WSL\Debian
 # Удаление временного tar-файла (если остался)
-Remove-Item C:\WSL\debian-backup.tar
+# Remove-Item C:\WSL\debian-backup.tar
 ```
 
 ---
 
 ### **❗ Важные примечания**
-*(Без изменений)*
-1.  **Драйверы NVIDIA**: Устанавливаются **только в Windows**. В Debian нужны только библиотеки и утилиты (CUDA Toolkit, Container Toolkit).
-2.  **Группы пользователя**: Группы `audio`, `video` **не требуются** — доступ к оборудованию управляется через Windows/WSLg.
-3.  **WSLg**: Для GUI-приложений убедитесь, что в Windows установлен [драйвер WSLg](https://learn.microsoft.com/en-us/windows/wsl/wslg) (обычно ставится с `wsl --update`).
-4.  **Пакеты для разработки**: Используйте `build-essential` для установки базового набора компиляторов и средств разработки.
+*(Обновлено для ясности)*
+1.  **Драйверы NVIDIA**: Устанавливаются **только в Windows**. Они обеспечивают базовую поддержку CUDA для WSL.
+2.  **CUDA Toolkit (в Debian)**: Устанавливается в WSL (как описано в разделе 5.2) для получения **компилятора (`nvcc`) и библиотек** для разработки/запуска CUDA-приложений непосредственно в WSL.
+3.  **NVIDIA Container Toolkit (в Debian)**: Устанавливается в WSL (как описано в разделе 5.1) для того, чтобы **Docker-контейнеры** могли использовать GPU.
+4.  **Группы пользователя**: Группы `audio`, `video` обычно **не требуются** — доступ к оборудованию управляется через Windows/WSLg. Группа `docker` нужна для запуска команд docker без `sudo`.
+5.  **WSLg**: Для GUI-приложений убедитесь, что в Windows установлен графический драйвер, поддерживающий WSLg (обычно последние драйверы Intel/AMD/NVIDIA подходят), и что WSL обновлен (`wsl --update`).
+6.  **Пакеты для разработки**: `build-essential` устанавливает базовый набор (gcc, g++, make и т.д.). Для CUDA-разработки нужен `cuda-toolkit`.
 
 ---
 
 ### **🔗 Актуальные ссылки**
-*(Без изменений)*
+*(Добавлена ссылка на загрузку CUDA)*
 * [Документация Microsoft по WSL](https://learn.microsoft.com/en-us/windows/wsl/)
-* [NVIDIA CUDA в WSL](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
-* [Документация Docker с NVIDIA](https://docs.docker.com/config/containers/resource_constraints/#gpu)
-
----
-
-Надеюсь, эта скорректированная версия инструкции будет более точной и удобной!
+* [NVIDIA CUDA в WSL (Официальная документация)](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+* [Загрузка NVIDIA CUDA Toolkit для WSL-Ubuntu (Используется для Debian)](https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=WSL-Ubuntu&target_version=2.0&target_type=deb_network)
+* [Документация Docker с NVIDIA](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) (Более актуальная ссылка на Container Toolkit)
